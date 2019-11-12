@@ -2,19 +2,20 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-#include <sys/time.h>   
+#include <sys/time.h>
+#include <getopt.h>
 
 
 
 /* ********************************************************** ARQUIVOS ********************************************************** */
 
 
-char** CriaGrafo(int *tam){
+char** CriaGrafo(int *tam, FILE *input){
     char **mat_grafos;
-    FILE *input = fopen("input.txt","r");
     int i,j,vert1=0, vert2=0;
-    /*  
-        Variavel mat_grafos = Matriz que sera alocada dinamicamente, seu tipo e 'char' para poupar espaco na memoria, visto que o grafo e nao ponderado 
+
+    /*
+        Variavel mat_grafos = Matriz que sera alocada dinamicamente, seu tipo e 'char' para poupar espaco na memoria, visto que o grafo e nao ponderado
         Variavel input = Arquivo de entrada. Contem a quantidade de empresas que estao sendo instaladas, bem como as ligacoes que existem entre elas
         Variavel str = String que ira ler cada linha do arquivo
         Variavel mult = Variavel que ira converter os valores lidos no arquivo (str) por valores inteiros, usando a decomposicao do numero, em unidades, dezenas, centenas, etc...
@@ -35,7 +36,7 @@ char** CriaGrafo(int *tam){
         mat_grafos[vert1][vert2] = 'V'; // Atualiza esses vertices para V, ou seja, existe aresta entre aqueles vertices
         mat_grafos[vert2][vert1] = 'V'; // Como e um grafo nao direcionado, e necessario colocar o valor V na linha e coluna dos vertices
     }
-    fclose(input); 
+    fclose(input);
     return mat_grafos;
 }
 
@@ -46,8 +47,8 @@ char** CriaGrafo(int *tam){
 
 int Heuristica1 (char **mat_grafos, int tam){
     int retira = 0,i,j,k,m,cont1,cont2,*vet, valor;
-    /*  
-        Variavel Retira = Ira informar quantos vertices foram retirados da solucao 
+    /*
+        Variavel Retira = Ira informar quantos vertices foram retirados da solucao
         Variavel i, j, k, m = Sao indices para a matriz e o vetor
         Variavel cont1 = Variavel que ira contabilizar quantos vertices sao adjacentes ao vertice que o programa esta rodando no momento
         Variavel cont2 = Variavel que ira contabilizar quantos vertices sao adjacentes ao vertice adjacente que o programa encontrou
@@ -105,7 +106,7 @@ int Heuristica1 (char **mat_grafos, int tam){
 
 
 bool vazio(int *vet, int tam){ // Confere se existe algum valor nao nulo no vetor, essa funcao foi usada na Heuristica 2
-    bool confere = true; 
+    bool confere = true;
     for (int i = 0; i < tam; i++){
         if (vet[i] != 0){ //Se houver algum valor nao nulo no vetor, indica que a Heuristica 2 ainda deve trabalhar
             confere = false;
@@ -124,7 +125,7 @@ int Heuristica2(char **mat_grafos, int tam){
         Variavel i, j = Sao indices para percorrer a matriz e o vetor
         Variavel max = Variavel que ira guardar a quantidade de arestas que existe no vertice com maior grau
         Variavel indice = Variavel que ira guardar o indice do vertice que possui o maior grau dentro da matriz
-        Variavel retira = Ira informar quantos vertices foram retirados da solucao 
+        Variavel retira = Ira informar quantos vertices foram retirados da solucao
     */
     for ( i = 0; i < tam; i++){
         vet[i] = 0; // Zera cada posicao, assegurando que nao pegue lixo de memoria
@@ -168,7 +169,7 @@ bool Verifica_CMVI(int *vert, int k, char **mat_grafos, int tam){
             vertice2 = vert[j];
             if ((vertice1 != vertice2) && (mat_grafos[vertice1][vertice2]== 'V')){ // Verifica se existe alguma aresta entre os vertices
                 return false;
-            } 
+            }
         }
     }
     for (i = 0; i < tam; i++){ // Iremos comparar agora se todos os vertices são adjacentes ao conjunto
@@ -194,7 +195,7 @@ bool Verifica_CMVI(int *vert, int k, char **mat_grafos, int tam){
 
 
 void ForcaBruta(int i, int tam, int *conju, int *cont, int *vert, char **mat_grafos){
-    /* 
+    /*
         Variavel i = Comporta-se como indice do vetor de conju
         Variavel tam = Tamanho total da combinacao, ou da quantidade de linhas da matriz
         Variavel conju = Vetor que ira gerar as combinacoes, indicando qual vertice sera verificado ou ignorado para compor a combinacao
@@ -231,40 +232,71 @@ void ForcaBruta(int i, int tam, int *conju, int *cont, int *vert, char **mat_gra
 /* ********************************************************** PROGRAMA PRINCIPAL ********************************************************** */
 
 
-int main(){
+int main(int argc, char *argv[]){
+    system("clear");
     int *vert, *conju;
-    char **mat_grafos;
-    int tam = 0, opcao,cont = 0;
+    char **mat_grafos, *entrada = NULL, *saida = NULL;;
+    int tam = 0, opcao,cont = 0, option;
     struct timeval start, end;
-    printf ("\nO que deseja executar:\n1) Solucao otima\n2) Heuristica 1\n3) Heuristica 2\n");
-    printf ("Opcao: ");
-    scanf ("%i",&opcao);
+    if(argc != 5){
+        printf("\nERROR!!! argumentos incorretos na linha do terminal\n");
+        printf("Digite: ./(arquivo_executavel) -i (arquivo_de_entrada) -o (arquivo_de_saida)\n\n");
+        return -1;
+    }
     /*
         Variavel mat_grafos = Matriz que ira ser alocada dinamicamente com a quantidade de empresas que estao sendo instaladas
         Variavel tam = Variavel que ira guardar a quantidade de empresas que estao sendo instaladas
         Variavel opcao = Usuario ira decidir qual algoritmo ele ira executar
     */
     gettimeofday(&start, NULL);
-    mat_grafos = CriaGrafo(&tam);
-    switch (opcao){
-        case 1: // Solucao otima
-            vert = (int*) malloc (tam * sizeof(int));
-            conju = (int*) malloc (tam * sizeof(int));
-            ForcaBruta(1,tam,conju,&cont,vert,mat_grafos);
-            printf ("%i \n",cont);
+    while((option = getopt(argc , argv , "i:o:")) != -1){
+        switch (option) {
+            case 'i':
+            entrada = optarg;
             break;
-        case 2: // Heuristica 1
-            cont = Heuristica1(mat_grafos,tam);
-            printf("%i \n",cont);
+          case 'o':
+            saida = optarg;
             break;
-        case 3: // Heuristica 2
-            cont = Heuristica2(mat_grafos,tam);
-            printf ("%i \n",cont);
+          case '?':
+            printf("\nDigite: ./(arquivo_executavel) -i (arquivo_de_entrada) -o (arquivo_de_saida)\n\n");
+            return -1;
             break;
-        default: // Se o usuario digitar um valor invalido
-            printf ("Comando invalido!\n");
+          default:
+            printf("\nERROR!!! argumentos incorretos na linha do terminal\n");
+            break;
+            }
     }
-    free(mat_grafos); // Libera espaco alocado pela matriz
-    gettimeofday(&end, NULL);
-    printf("\nTempo gasto = %ld microssegundos.\n", ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec)));
-}       
+    if (entrada !=  NULL && saida != NULL){
+        FILE *input = fopen (entrada,"r");
+        if(input == NULL)
+        {
+            printf("\nERROR!!! arquivo de entrada nao encontrado!\n\n");
+            return -1;
+        }
+        printf ("\nO que deseja executar:\n1) Solucao otima\n2) Heuristica 1\n3) Heuristica 2\n");
+        printf ("Opcao: ");
+        scanf ("%i",&opcao);
+        mat_grafos = CriaGrafo(&tam,input);
+        switch (opcao){
+            case 1: // Solucao otima
+                vert = (int*) malloc (tam * sizeof(int));
+                conju = (int*) malloc (tam * sizeof(int));
+                ForcaBruta(1,tam,conju,&cont,vert,mat_grafos);
+                printf ("%i \n",cont);
+                break;
+            case 2: // Heuristica 1
+                cont = Heuristica1(mat_grafos,tam);
+                printf("%i \n",cont);
+                break;
+            case 3: // Heuristica 2
+                cont = Heuristica2(mat_grafos,tam);
+                printf ("%i \n",cont);
+                break;
+            default: // Se o usuario digitar um valor invalido
+                printf ("Comando invalido!\n");
+        }
+        free(mat_grafos); // Libera espaco alocado pela matriz
+        gettimeofday(&end, NULL);
+        printf("\nTempo gasto = %ld microssegundos.\n", ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec)));
+    }
+}
